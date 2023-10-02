@@ -1,34 +1,43 @@
 name: Deploy to IIS
 
+
 on:
   push:
     branches:
       - dev
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      - name: Setup .NET Core
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '8.0.x'
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '8.0.x' # Specify the desired .NET Core version
 
-      - name: Restore dependencies
-        run: dotnet restore
+    - name: Restore dependencies
+      run: dotnet restore
 
-      - name: Build project
-        run: dotnet build --configuration Release
+    - name: Build the project
+      run: dotnet build --configuration Release
 
-      - name: Publish project
-        run: dotnet publish --configuration Release --property:PublishDir=./publish
+    - name: Publish the project
+      run: dotnet publish --configuration Release --property:PublishDir=./publish
 
-      - name: Copy files to IIS directory
-        run: xcopy /S /Y /I .\publish\* C:\inetpub\wwwroot\IntranetAPI
+    - name: Deploy to IIS
+      run: |
+        # Stop the IIS application
+        iisreset /stop
 
-      - name: Restart IIS
-        run: iisreset
+        # Delete existing files in the IIS application directory
+        Remove-Item -Recurse -Force 'C:\inetpub\wwwroot\IntranetAPI'
+
+        # Copy published files to the IIS application directory
+        xcopy ./publish 'C:\inetpub\wwwroot\IntranetAPI' /s /e
+
+        # Start the IIS application
+        iisreset /start
